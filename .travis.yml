@@ -9,5 +9,6 @@ install:
     - go get -d -v ./... && go build -v ./...
     - go get github.com/stretchr/testify/assert
     - go get github.com/ory-platform/common
+    - go get code.google.com/p/go-uuid/uuid
 
 script: go test ./...
