@@ -21,7 +21,7 @@ type MongoStorage struct {
     database *mgo.Database
 }
 
-func NewOAuthMongoStorage(database *mgo.Database, conf *osin.ServerConfig) (storage.OAuthStorage, error) {
+func NewOAuthMongoStorage(database *mgo.Database) (storage.OAuthStorage, error) {
     err := database.C(REFRESH_COLLECTION).EnsureIndex(MongoRefreshTokenIndex)
     if err != nil {
         return nil, err
@@ -68,10 +68,6 @@ func (s *MongoStorage) GetClient(id string) (osin.Client, error) {
     clients := s.database.C(CLIENT_COLLECTION)
     client := new(MongoClient)
     err := clients.Find(bson.M{"id": id}).One(client)
-
-    if err == mgo.ErrNotFound {
-        return nil, nil
-    }
     return client, err
 }
 

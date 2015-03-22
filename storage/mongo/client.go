@@ -14,9 +14,9 @@ var MongoClientIndex = mgo.Index{
 
 // DefaultClient stores all data in struct variables
 type MongoClient struct {
-    Id          string
-    Secret      string
-    RedirectUri string
+    Id          string `bson:"id"`
+    Secret      string `bson:"secret"`
+    RedirectUri string `bson:"redirectUri"`
     UserData    interface{}
 }
 
