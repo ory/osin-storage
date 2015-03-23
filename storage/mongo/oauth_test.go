@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"fmt"
-	"github.com/RangelReale/osin"
 	"github.com/ory-platform/common/mgopath"
 	"github.com/ory-platform/common/rand/sequence"
 	"github.com/ory-platform/dockertest"
@@ -12,11 +11,10 @@ import (
 )
 
 func TestNewOAuthMongoStorage(t *testing.T) {
-	config := osin.NewServerConfig()
 	container, db := connect(t)
 	defer container.KillRemove(t)
 
-	storage, err := NewOAuthMongoStorage(db, config)
+	storage, err := NewOAuthMongoStorage(db)
 	assert.Nil(t, err)
 	assert.NotNil(t, storage)
 }
