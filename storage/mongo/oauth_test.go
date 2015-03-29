@@ -2,9 +2,9 @@ package mongo
 
 import (
 	"fmt"
-	"github.com/ory-platform/common/mgopath"
-	"github.com/ory-platform/common/rand/sequence"
-	"github.com/ory-platform/dockertest"
+	"github.com/ory-am/common/mgopath"
+	"github.com/ory-am/common/rand/sequence"
+	"github.com/ory-am/dockertest"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2"
 	"testing"

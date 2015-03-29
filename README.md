@@ -1,6 +1,6 @@
 # osin-storage
 
-[![Build Status](https://travis-ci.org/ory-platform/osin-storage.svg)](https://travis-ci.org/ory-platform/osin-storage)
+[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg)](https://travis-ci.org/ory-am/osin-storage)
 
 Different storage backends for [osin oauth2](https://github.com/RangelReale/osin).
 Currently only supporting MongoDB.
@@ -11,12 +11,12 @@ adds the signature `SetClient(id string, client osin.Client) error` for adding c
 ## Usage
 
 ```
-go get "github.com/ory-platform/osin-storage/storage/mongo"
+go get "github.com/ory-am/osin-storage/storage/mongo"
 ```
 
 ```go
 import (
-    "github.com/ory-platform/osin-storage/storage/mongo"
+    "github.com/ory-am/osin-storage/storage/mongo"
     "gopkg.in/mgo.v2"
 )
 

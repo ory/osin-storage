@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/RangelReale/osin"
-	"github.com/ory-platform/osin-storage/storage"
+	"github.com/ory-am/osin-storage/storage"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
