@@ -2,41 +2,40 @@
 
 [![Build Status](https://travis-ci.org/ory-am/osin-storage.svg)](https://travis-ci.org/ory-am/osin-storage)
 
-Different storage backends for [osin oauth2](https://github.com/RangelReale/osin).
-Currently only supporting MongoDB.
+A postgres storage backend for [osin oauth2](https://github.com/RangelReale/osin).
 
 Additional to implementing the `osin.Storage` interface, the `OAuthStorage` interface
-adds the signature `SetClient(id string, client osin.Client) error` for adding clients.
+adds
+```
+CreateClient(id, secret, redirectURI string) (osin.Client, error)
+UpdateClient(id, secret, redirectURI string) (osin.Client, error)
+```
+to the signature.
 
 ## Usage
 
-```
-go get "github.com/ory-am/osin-storage/storage/mongo"
-```
+First, install this library with `go get "github.com/ory-am/osin-storage/storage/postgres"`.
 
 ```go
 import (
-    "github.com/ory-am/osin-storage/storage/mongo"
-    "gopkg.in/mgo.v2"
+	"database/sql"
+	_ "github.com/lib/pq"
+
+	"github.com/ory-am/osin-storage/storage/postgres"
+	"github.com/RangelReale/osin"
 )
 
 func main() {
-    mgoSession, err := mgo.Dial("localhost")
-
+    // url := "postgres://my-postgres-url/database"
+	db, err = sql.Open("postgres", url)
     if err != nil {
         return nil, err
     }
 
-    defer mgoSession.Close()
-
-    oauthServer, oauthStorage := mongo.NewOAuthServer(mongoSession, conf, "oauthdb")
+	store := postgres.New(db)
+    server := osin.NewServer(osin.NewServerConfig(), store)
 
     // See the osin documentation for more information
-    // e.g.: oauthServer.HandleAuthorizeRequest(resp, r)
+    // e.g.: server.HandleAuthorizeRequest(resp, r)
 }
 ```
-
-## To be done
-
-* Write tests for `storage/mongo/oauth.go`
-* Add additional storage back ends

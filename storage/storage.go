@@ -2,7 +2,8 @@ package storage
 
 import "github.com/RangelReale/osin"
 
-type OAuthStorage interface {
+type Storage interface {
 	osin.Storage
-	SetClient(id string, client osin.Client) error
+	CreateClient(id, secret, redirectURI string) (osin.Client, error)
+	UpdateClient(id, secret, redirectURI string) (osin.Client, error)
 }
