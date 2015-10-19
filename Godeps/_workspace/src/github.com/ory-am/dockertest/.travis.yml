@@ -1,18 +1,21 @@
 sudo: required
 
-language: go
-
 services:
   - docker
 
 env:
   - IS_TRAVIS_ENV=true
 
-go:
-  - 1.5
+language: go
 
 before_install:
+  - docker pull mongo
   - docker pull postgres
+  - docker pull mysql
+  - docker images --no-trunc
+
+go:
+  - 1.5
 
 install:
   - go get -t ./...
