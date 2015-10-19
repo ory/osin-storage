@@ -200,11 +200,12 @@ func updateClient(t *testing.T, store storage.Storage, set osin.Client) {
 }
 
 func connect(t *testing.T) (c dockertest.ContainerID, db *sql.DB) {
-	c, ip, port, err := dockertest.SetupPostgreSQLContainer()
+	c, ip, port, err := dockertest.SetupPostgreSQLContainer(time.Second * 5)
 	require.Nil(t, err)
 	url := fmt.Sprintf("postgres://%s:%s@%s:%d/postgres?sslmode=disable", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
 	db, err = sql.Open("postgres", url)
 	require.Nil(t, err)
+	time.Sleep(time.Second * 5)
 	require.Nil(t, db.Ping())
 	require.Nil(t, createAndUseTestDB(db))
 	return
