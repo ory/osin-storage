@@ -4,8 +4,7 @@
 
 A postgres storage backend for [osin oauth2](https://github.com/RangelReale/osin).
 
-Additional to implementing the `osin.Storage` interface, the `OAuthStorage` interface
-adds
+Additional to implementing the `osin.Storage` interface, the `github.com/ory-am/osin-storage/storage.Storage` interface adds
 ```
 CreateClient(id, secret, redirectURI string) (osin.Client, error)
 UpdateClient(id, secret, redirectURI string) (osin.Client, error)
