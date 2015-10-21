@@ -5,24 +5,45 @@ import (
 	"fmt"
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
-	"github.com/ory-am/common/rand/sequence"
 	"github.com/ory-am/dockertest"
 	"github.com/ory-am/osin-storage/storage"
 	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 	"time"
+"log"
+	"os"
 )
 
-func TestClientOperations(t *testing.T) {
-	container, db := connect(t)
-	defer func() {
-		require.Nil(t, container.KillRemove())
-	}()
-	store := New(db)
-	require.Nil(t, createAndUseTestDB(db))
-	require.Nil(t, store.CreateSchemas())
+var db *sql.DB
+var store *Storage
 
+func TestMain(m *testing.M) {
+	c, ip, port, err := dockertest.SetupPostgreSQLContainer(time.Second * 5)
+	if err != nil {
+		log.Fatalf("Could not set up PostgreSQL container: %v", err)
+	}
+	defer c.KillRemove()
+
+	url := fmt.Sprintf("postgres://%s:%s@%s:%d/postgres?sslmode=disable", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
+	db, err = sql.Open("postgres", url)
+	if err != nil {
+		log.Fatalf("Could not set up PostgreSQL container: %v", err)
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Fatalf("Could not ping database: %v", err)
+	}
+
+	store = New(db)
+	if err = store.CreateSchemas(); err != nil {
+		log.Fatalf("Could not set up schemas: %v", err)
+	}
+
+	os.Exit(m.Run())
+}
+
+func TestClientOperations(t *testing.T) {
 	create := &osin.DefaultClient{"1", "secret", "http://localhost/", nil}
 	createClient(t, store, create)
 	getClient(t, store, create)
@@ -33,15 +54,7 @@ func TestClientOperations(t *testing.T) {
 }
 
 func TestAuthorizeOperations(t *testing.T) {
-	container, db := connect(t)
-	defer func() {
-		require.Nil(t, container.KillRemove())
-	}()
-	store := New(db)
-	require.Nil(t, createAndUseTestDB(db))
-	require.Nil(t, store.CreateSchemas())
-
-	client := &osin.DefaultClient{"123", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"2", "secret", "http://localhost/", nil}
 	createClient(t, store, client)
 
 	authorize := &osin.AuthorizeData{
@@ -68,15 +81,7 @@ func TestAuthorizeOperations(t *testing.T) {
 }
 
 func TestAccessOperations(t *testing.T) {
-	container, db := connect(t)
-	defer func() {
-		require.Nil(t, container.KillRemove())
-	}()
-	store := New(db)
-	require.Nil(t, createAndUseTestDB(db))
-	require.Nil(t, store.CreateSchemas())
-
-	client := &osin.DefaultClient{"123", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"3", "secret", "http://localhost/", nil}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        "code",
@@ -130,18 +135,10 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	container, db := connect(t)
-	defer func() {
-		require.Nil(t, container.KillRemove())
-	}()
-	store := New(db)
-	require.Nil(t, createAndUseTestDB(db))
-	require.Nil(t, store.CreateSchemas())
-
-	client := &osin.DefaultClient{"123", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"4", "secret", "http://localhost/", nil}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
-		Code:        "code",
+		Code:        "code_refresh",
 		ExpiresIn:   int32(60),
 		Scope:       "scope",
 		RedirectUri: "http://localhost/",
@@ -153,8 +150,8 @@ func TestRefreshOperations(t *testing.T) {
 		Client:        client,
 		AuthorizeData: authorize,
 		AccessData:    nil,
-		AccessToken:   "access",
-		RefreshToken:  "refresh",
+		AccessToken:   "access_refresh",
+		RefreshToken:  "refresh_refresh",
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
@@ -197,26 +194,4 @@ func updateClient(t *testing.T, store storage.Storage, set osin.Client) {
 	client, err := store.UpdateClient(set.GetId(), set.GetSecret(), set.GetRedirectUri())
 	require.Nil(t, err)
 	require.EqualValues(t, set, client)
-}
-
-func connect(t *testing.T) (c dockertest.ContainerID, db *sql.DB) {
-	c, ip, port, err := dockertest.SetupPostgreSQLContainer(time.Second * 5)
-	require.Nil(t, err)
-	url := fmt.Sprintf("postgres://%s:%s@%s:%d/postgres?sslmode=disable", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
-	db, err = sql.Open("postgres", url)
-	require.Nil(t, err)
-	time.Sleep(time.Second * 5)
-	require.Nil(t, db.Ping())
-	require.Nil(t, createAndUseTestDB(db))
-	return
-}
-
-func createAndUseTestDB(db *sql.DB) error {
-	name, err := sequence.RuneSequence(10, []rune("abcdefghijklmnopqrstuvwxyz"))
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", string(name)))
-	return err
 }
