@@ -76,35 +76,22 @@ func (s *Storage) GetClient(id string) (osin.Client, error) {
 }
 
 func (s *Storage) UpdateClient(id, secret, redirectURI string) (osin.Client, error) {
-	st, err := s.db.Prepare("UPDATE client SET (secret, redirect_uri) = ($2, $3) WHERE id=$1")
-	if err != nil {
+	if _, err := s.db.Exec("UPDATE client SET (secret, redirect_uri) = ($2, $3) WHERE id=$1", id, secret, redirectURI); err != nil {
 		return nil, err
 	}
-
-	if _, err = st.Exec(id, secret, redirectURI); err != nil {
-		return nil, err
-	}
-	return &osin.DefaultClient{id, secret, redirectURI, nil}, err
+	return &osin.DefaultClient{id, secret, redirectURI, nil}, nil
 }
 
 func (s *Storage) CreateClient(id, secret, redirectURI string) (osin.Client, error) {
-	st, err := s.db.Prepare("INSERT INTO client (id, secret, redirect_uri) VALUES ($1, $2, $3)")
+	_, err := s.db.Exec("INSERT INTO client (id, secret, redirect_uri) VALUES ($1, $2, $3)", id, secret, redirectURI)
 	if err != nil {
 		return nil, err
 	}
-	_, err = st.Exec(id, secret, redirectURI)
-	if err != nil {
-		return nil, err
-	}
-	return &osin.DefaultClient{id, secret, redirectURI, nil}, err
+	return &osin.DefaultClient{id, secret, redirectURI, nil}, nil
 }
 
 func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
-	st, err := s.db.Prepare("INSERT INTO authorize (client, code, expires_in, scope, redirect_uri, state, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)")
-	if err != nil {
-		return
-	}
-	_, err = st.Exec(data.Client.GetId(), data.Code, data.ExpiresIn, data.Scope, data.RedirectUri, data.State, data.CreatedAt)
+	_, err = s.db.Exec("INSERT INTO authorize (client, code, expires_in, scope, redirect_uri, state, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)", data.Client.GetId(), data.Code, data.ExpiresIn, data.Scope, data.RedirectUri, data.State, data.CreatedAt)
 	return err
 }
 
@@ -126,32 +113,40 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 }
 
 func (s *Storage) RemoveAuthorize(code string) (err error) {
-	st, err := s.db.Prepare("DELETE FROM authorize WHERE code=$1")
-	if err != nil {
-		return
-	}
-	_, err = st.Exec(code)
+	_, err = s.db.Exec("DELETE FROM authorize WHERE code=$1", code)
 	return err
 }
 
 func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
-	st, err := s.db.Prepare("INSERT INTO access (client, authorize, previous, access_token, refresh_token, expires_in, scope, redirect_uri, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)")
-	if err != nil {
-		return
-	}
 	prev := ""
 	if data.AccessData != nil {
 		prev = data.AccessData.AccessToken
 	}
 
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+
 	if data.RefreshToken != "" {
-		if err := s.saveRefresh(data.RefreshToken, data.AccessToken); err != nil {
+		if err := saveRefresh(tx, data.RefreshToken, data.AccessToken); err != nil {
 			return err
 		}
 	}
 
-	_, err = st.Exec(data.Client.GetId(), data.AuthorizeData.Code, prev, data.AccessToken, data.RefreshToken, data.ExpiresIn, data.Scope, data.RedirectUri, data.CreatedAt)
-	return err
+	_, err = tx.Exec("INSERT INTO access (client, authorize, previous, access_token, refresh_token, expires_in, scope, redirect_uri, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", data.Client.GetId(), data.AuthorizeData.Code, prev, data.AccessToken, data.RefreshToken, data.ExpiresIn, data.Scope, data.RedirectUri, data.CreatedAt)
+	if err != nil {
+		if rbe := tx.Rollback(); rbe != nil {
+			return rbe
+		}
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
@@ -192,12 +187,13 @@ func (s *Storage) RemoveAccess(code string) (err error) {
 	return err
 }
 
-func (s *Storage) saveRefresh(refresh, access string) error {
-	st, err := s.db.Prepare("INSERT INTO refresh (token, access) VALUES ($1, $2)")
+func saveRefresh(tx *sql.Tx, refresh, access string) (err error) {
+	_, err = tx.Exec("INSERT INTO refresh (token, access) VALUES ($1, $2)", refresh, access)
 	if err != nil {
-		return err
+		if rbe := tx.Rollback(); rbe != nil {
+			return rbe
+		}
 	}
-	_, err = st.Exec(refresh, access)
 	return err
 }
 
