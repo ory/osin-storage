@@ -6,7 +6,7 @@ services:
   - docker
 
 env:
-  - IS_TRAVIS_ENV=true
+  - DOCKER_BIND_LOCALHOST=true
 
 go:
   - 1.5
