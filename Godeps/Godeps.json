@@ -28,7 +28,7 @@
 		},
 		{
 			"ImportPath": "github.com/ory-am/dockertest",
-			"Rev": "455ae07fc5e6e48fb99d93d5b7bb9eb8953c9c3f"
+			"Rev": "80ea36c047e6bd7b802a6dce25c29bac64f8d78e"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
