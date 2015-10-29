@@ -1,39 +1,34 @@
-package postgres
+package postgres_test
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
 	"github.com/ory-am/dockertest"
+	"github.com/ory-am/osin-storage/Godeps/_workspace/src/github.com/pborman/uuid"
 	"github.com/ory-am/osin-storage/storage"
+	. "github.com/ory-am/osin-storage/storage/postgres"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log"
+	"os"
 	"reflect"
 	"testing"
 	"time"
-"log"
-	"os"
 )
 
 var db *sql.DB
 var store *Storage
+var userDataMock = "bar"
 
 func TestMain(m *testing.M) {
-	c, ip, port, err := dockertest.SetupPostgreSQLContainer(time.Second * 5)
+	var err error
+	var c dockertest.ContainerID
+	c, db, err = dockertest.OpenPostgreSQLContainerConnection(15, time.Millisecond*500)
 	if err != nil {
 		log.Fatalf("Could not set up PostgreSQL container: %v", err)
 	}
 	defer c.KillRemove()
-
-	url := fmt.Sprintf("postgres://%s:%s@%s:%d/postgres?sslmode=disable", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
-	db, err = sql.Open("postgres", url)
-	if err != nil {
-		log.Fatalf("Could not set up PostgreSQL container: %v", err)
-	}
-
-	if err = db.Ping(); err != nil {
-		log.Fatalf("Could not ping database: %v", err)
-	}
 
 	store = New(db)
 	if err = store.CreateSchemas(); err != nil {
@@ -57,67 +52,102 @@ func TestAuthorizeOperations(t *testing.T) {
 	client := &osin.DefaultClient{"2", "secret", "http://localhost/", nil}
 	createClient(t, store, client)
 
+	for k, authorize := range []*osin.AuthorizeData{
+		&osin.AuthorizeData{
+			Client:      client,
+			Code:        uuid.New(),
+			ExpiresIn:   int32(60),
+			Scope:       "scope",
+			RedirectUri: "http://localhost/",
+			State:       "state",
+			// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
+			CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			UserData:  userDataMock,
+		},
+	} {
+		// Test save
+		require.Nil(t, store.SaveAuthorize(authorize))
+
+		// Test fetch
+		result, err := store.LoadAuthorize(authorize.Code)
+		require.Nil(t, err)
+		require.True(t, reflect.DeepEqual(authorize, result), "Case: %d\n%v\n\n%v", k, authorize, result)
+
+		// Test remove
+		require.Nil(t, store.RemoveAuthorize(authorize.Code))
+		_, err = store.LoadAuthorize(authorize.Code)
+		require.NotNil(t, err)
+	}
+
+	removeClient(t, store, client)
+}
+
+func TestStoreFailsOnInvalidUserData(t *testing.T) {
+	client := &osin.DefaultClient{"3", "secret", "http://localhost/", nil}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
-		Code:        "code",
+		Code:        uuid.New(),
 		ExpiresIn:   int32(60),
 		Scope:       "scope",
 		RedirectUri: "http://localhost/",
 		State:       "state",
-		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
-		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:  nil,
+		CreatedAt:   time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		UserData:    struct{ foo string }{"bar"},
 	}
-
-	require.Nil(t, store.SaveAuthorize(authorize))
-
-	result, err := store.LoadAuthorize(authorize.Code)
-	require.Nil(t, err)
-	require.True(t, reflect.DeepEqual(authorize, result))
-
-	require.Nil(t, store.RemoveAuthorize(authorize.Code))
-	_, err = store.LoadAuthorize(authorize.Code)
-	require.NotNil(t, err)
+	access := &osin.AccessData{
+		Client:        client,
+		AuthorizeData: authorize,
+		AccessData:    nil,
+		AccessToken:   uuid.New(),
+		RefreshToken:  uuid.New(),
+		ExpiresIn:     int32(60),
+		Scope:         "scope",
+		RedirectUri:   "https://localhost/",
+		CreatedAt:     time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		UserData:      struct{ foo string }{"bar"},
+	}
+	assert.NotNil(t, store.SaveAuthorize(authorize))
+	assert.NotNil(t, store.SaveAccess(access))
 }
 
 func TestAccessOperations(t *testing.T) {
 	client := &osin.DefaultClient{"3", "secret", "http://localhost/", nil}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
-		Code:        "code",
+		Code:        uuid.New(),
 		ExpiresIn:   int32(60),
 		Scope:       "scope",
 		RedirectUri: "http://localhost/",
 		State:       "state",
 		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:  nil,
+		UserData:  userDataMock,
 	}
 	nestedAccess := &osin.AccessData{
 		Client:        client,
 		AuthorizeData: authorize,
 		AccessData:    nil,
-		AccessToken:   "previous_access",
-		RefreshToken:  "previous_refresh",
+		AccessToken:   uuid.New(),
+		RefreshToken:  uuid.New(),
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
 		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:  nil,
+		UserData:  userDataMock,
 	}
 	access := &osin.AccessData{
 		Client:        client,
 		AuthorizeData: authorize,
 		AccessData:    nestedAccess,
-		AccessToken:   "access",
-		RefreshToken:  "refresh",
+		AccessToken:   uuid.New(),
+		RefreshToken:  uuid.New(),
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
 		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
 		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:  nil,
+		UserData:  userDataMock,
 	}
 
 	createClient(t, store, client)
@@ -132,50 +162,66 @@ func TestAccessOperations(t *testing.T) {
 	require.Nil(t, store.RemoveAccess(access.AccessToken))
 	_, err = store.LoadAccess(access.AccessToken)
 	require.NotNil(t, err)
+	require.Nil(t, store.RemoveAuthorize(authorize.Code))
+
+	removeClient(t, store, client)
 }
 
 func TestRefreshOperations(t *testing.T) {
 	client := &osin.DefaultClient{"4", "secret", "http://localhost/", nil}
-	authorize := &osin.AuthorizeData{
-		Client:      client,
-		Code:        "code_refresh",
-		ExpiresIn:   int32(60),
-		Scope:       "scope",
-		RedirectUri: "http://localhost/",
-		State:       "state",
-		CreatedAt:   time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:    nil,
-	}
-	access := &osin.AccessData{
-		Client:        client,
-		AuthorizeData: authorize,
-		AccessData:    nil,
-		AccessToken:   "access_refresh",
-		RefreshToken:  "refresh_refresh",
-		ExpiresIn:     int32(60),
-		Scope:         "scope",
-		RedirectUri:   "https://localhost/",
-		CreatedAt:     time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-		UserData:      nil,
+	type test struct {
+		access *osin.AccessData
 	}
 
-	createClient(t, store, client)
-	require.Nil(t, store.SaveAuthorize(authorize))
-	require.Nil(t, store.SaveAccess(access))
-	result, err := store.LoadRefresh(access.RefreshToken)
-	require.Nil(t, err)
+	for k, c := range []*test{
+		&test{
+			access: &osin.AccessData{
+				Client: client,
+				AuthorizeData: &osin.AuthorizeData{
+					Client:      client,
+					Code:        uuid.New(),
+					ExpiresIn:   int32(60),
+					Scope:       "scope",
+					RedirectUri: "http://localhost/",
+					State:       "state",
+					CreatedAt:   time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					UserData:    userDataMock,
+				},
+				AccessData:   nil,
+				AccessToken:  uuid.New(),
+				RefreshToken: uuid.New(),
+				ExpiresIn:    int32(60),
+				Scope:        "scope",
+				RedirectUri:  "https://localhost/",
+				CreatedAt:    time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				UserData:     userDataMock,
+			},
+		},
+	} {
+		createClient(t, store, client)
+		require.Nil(t, store.SaveAuthorize(c.access.AuthorizeData), "Case %d", k)
+		require.Nil(t, store.SaveAccess(c.access), "Case %d", k)
 
-	require.True(t, reflect.DeepEqual(access, result))
-	require.Nil(t, store.RemoveRefresh(access.RefreshToken))
-	_, err = store.LoadRefresh(access.RefreshToken)
-	require.NotNil(t, err)
-	require.Nil(t, store.RemoveAccess(access.AccessToken))
-	require.Nil(t, store.SaveAccess(access))
-	_, err = store.LoadRefresh(access.RefreshToken)
-	require.Nil(t, err)
-	require.Nil(t, store.RemoveAccess(access.AccessToken))
-	_, err = store.LoadRefresh(access.RefreshToken)
-	require.NotNil(t, err)
+		result, err := store.LoadRefresh(c.access.RefreshToken)
+		require.Nil(t, err)
+		require.True(t, reflect.DeepEqual(c.access, result), "Case %d", k)
+
+		require.Nil(t, store.RemoveRefresh(c.access.RefreshToken))
+		_, err = store.LoadRefresh(c.access.RefreshToken)
+
+		require.NotNil(t, err, "Case %d", k)
+		require.Nil(t, store.RemoveAccess(c.access.AccessToken), "Case %d", k)
+		require.Nil(t, store.SaveAccess(c.access), "Case %d", k)
+
+		_, err = store.LoadRefresh(c.access.RefreshToken)
+		require.Nil(t, err, "Case %d", k)
+
+		require.Nil(t, store.RemoveAccess(c.access.AccessToken), "Case %d", k)
+		_, err = store.LoadRefresh(c.access.RefreshToken)
+		require.NotNil(t, err, "Case %d", k)
+
+	}
+	removeClient(t, store, client)
 }
 
 func getClient(t *testing.T, store storage.Storage, set osin.Client) {
@@ -185,13 +231,13 @@ func getClient(t *testing.T, store storage.Storage, set osin.Client) {
 }
 
 func createClient(t *testing.T, store storage.Storage, set osin.Client) {
-	client, err := store.CreateClient(set.GetId(), set.GetSecret(), set.GetRedirectUri())
-	require.Nil(t, err)
-	require.EqualValues(t, set, client)
+	require.Nil(t, store.CreateClient(set))
 }
 
 func updateClient(t *testing.T, store storage.Storage, set osin.Client) {
-	client, err := store.UpdateClient(set.GetId(), set.GetSecret(), set.GetRedirectUri())
-	require.Nil(t, err)
-	require.EqualValues(t, set, client)
+	require.Nil(t, store.UpdateClient(set))
+}
+
+func removeClient(t *testing.T, store storage.Storage, set osin.Client) {
+	require.Nil(t, store.RemoveClient(set.GetId()))
 }
