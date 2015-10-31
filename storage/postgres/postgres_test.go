@@ -39,17 +39,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestClientOperations(t *testing.T) {
-	create := &osin.DefaultClient{"1", "secret", "http://localhost/", nil}
+	create := &osin.DefaultClient{"1", "secret", "http://localhost/", ""}
 	createClient(t, store, create)
 	getClient(t, store, create)
 
-	update := &osin.DefaultClient{"1", "secret", "http://www.google.com/", nil}
+	update := &osin.DefaultClient{"1", "secret", "http://www.google.com/", ""}
 	updateClient(t, store, update)
 	getClient(t, store, update)
 }
 
 func TestAuthorizeOperations(t *testing.T) {
-	client := &osin.DefaultClient{"2", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"2", "secret", "http://localhost/", ""}
 	createClient(t, store, client)
 
 	for k, authorize := range []*osin.AuthorizeData{
@@ -83,7 +83,7 @@ func TestAuthorizeOperations(t *testing.T) {
 }
 
 func TestStoreFailsOnInvalidUserData(t *testing.T) {
-	client := &osin.DefaultClient{"3", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"3", "secret", "http://localhost/", ""}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -111,7 +111,7 @@ func TestStoreFailsOnInvalidUserData(t *testing.T) {
 }
 
 func TestAccessOperations(t *testing.T) {
-	client := &osin.DefaultClient{"3", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"3", "secret", "http://localhost/", ""}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -168,7 +168,7 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	client := &osin.DefaultClient{"4", "secret", "http://localhost/", nil}
+	client := &osin.DefaultClient{"4", "secret", "http://localhost/", ""}
 	type test struct {
 		access *osin.AccessData
 	}

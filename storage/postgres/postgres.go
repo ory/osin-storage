@@ -13,6 +13,7 @@ var schemas = []string{`CREATE TABLE client (
 	id           text NOT NULL,
 	secret 		 text NOT NULL,
 	redirect_uri text NOT NULL,
+	extra		 text NOT NULL,
 
     CONSTRAINT client_pk PRIMARY KEY (id)
 )`, `CREATE TABLE IF NOT EXISTS authorize (
@@ -70,25 +71,35 @@ func (s *Storage) Clone() osin.Storage {
 	return s
 }
 
-func (s *Storage) Close() {
-}
+func (s *Storage) Close() {}
 
 func (s *Storage) GetClient(id string) (osin.Client, error) {
-	row := s.db.QueryRow("SELECT id, secret, redirect_uri FROM client WHERE id=$1 LIMIT 1", id)
+	row := s.db.QueryRow("SELECT id, secret, redirect_uri, extra FROM client WHERE id=$1 LIMIT 1", id)
 	var c osin.DefaultClient
-	if err := row.Scan(&c.Id, &c.Secret, &c.RedirectUri); err != nil {
+	var extra string
+	if err := row.Scan(&c.Id, &c.Secret, &c.RedirectUri, &extra); err != nil {
 		return nil, err
 	}
+	c.UserData = extra
 	return &c, nil
 }
 
 func (s *Storage) UpdateClient(c osin.Client) error {
-	_, err := s.db.Exec("UPDATE client SET (secret, redirect_uri) = ($2, $3) WHERE id=$1", c.GetId(), c.GetSecret(), c.GetRedirectUri())
+	userData, err := dataToString(c.GetUserData())
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.Exec("UPDATE client SET (secret, redirect_uri, extra) = ($2, $3, $4) WHERE id=$1", c.GetId(), c.GetSecret(), c.GetRedirectUri(), userData)
 	return err
 }
 
 func (s *Storage) CreateClient(c osin.Client) error {
-	_, err := s.db.Exec("INSERT INTO client (id, secret, redirect_uri) VALUES ($1, $2, $3)", c.GetId(), c.GetSecret(), c.GetRedirectUri())
+	userData, err := dataToString(c.GetUserData())
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec("INSERT INTO client (id, secret, redirect_uri, extra) VALUES ($1, $2, $3, $4)", c.GetId(), c.GetSecret(), c.GetRedirectUri(), userData)
 	return err
 }
 
@@ -98,10 +109,11 @@ func (s *Storage) RemoveClient(id string) (err error) {
 }
 
 func (s *Storage) SaveAuthorize(data *osin.AuthorizeData) (err error) {
-	userData, ok := data.UserData.(string)
-	if !ok {
-		return fmt.Errorf("Could not assert to string: %v", data.UserData)
+	userData, err := dataToString(data.UserData)
+	if err != nil {
+		return err
 	}
+
 	_, err = s.db.Exec("INSERT INTO authorize (client, code, expires_in, scope, redirect_uri, state, created_at, extra) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", data.Client.GetId(), data.Code, data.ExpiresIn, data.Scope, data.RedirectUri, data.State, data.CreatedAt, userData)
 	return err
 }
@@ -130,6 +142,16 @@ func (s *Storage) RemoveAuthorize(code string) (err error) {
 	return err
 }
 
+func dataToString(data interface{}) (string, error) {
+	if res, ok := data.(string); ok {
+		return res, nil
+	} else if stringer, ok := data.(fmt.Stringer); ok {
+		return stringer.String(), nil
+	} else {
+		return "", fmt.Errorf("Could not assert to string: %v", data)
+	}
+}
+
 func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 	prev := ""
 	authorizeData := &osin.AuthorizeData{}
@@ -142,9 +164,9 @@ func (s *Storage) SaveAccess(data *osin.AccessData) (err error) {
 		authorizeData = data.AuthorizeData
 	}
 
-	userData, ok := data.UserData.(string)
-	if !ok {
-		return fmt.Errorf("Could not assert to string: %v", data.UserData)
+	userData, err := dataToString(data.UserData)
+	if err != nil {
+		return err
 	}
 
 	tx, err := s.db.Begin()
