@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-var schemas = []string{`CREATE TABLE client (
+var schemas = []string{`CREATE TABLE IF NOT EXISTS client (
 	id           text NOT NULL,
 	secret 		 text NOT NULL,
 	redirect_uri text NOT NULL,
