@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
+	"github.com/ory-am/common/pkg"
 	"github.com/ory-am/dockertest"
 	"github.com/ory-am/osin-storage/storage"
 	. "github.com/ory-am/osin-storage/storage/postgres"
@@ -38,6 +39,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestGetNotFound(t *testing.T) {
+	_, err := store.GetClient("asdf")
+	assert.Equal(t, pkg.ErrNotFound, err)
+
+	_, err = store.LoadAccess("asdf")
+	assert.Equal(t, pkg.ErrNotFound, err)
+
+	_, err = store.LoadAuthorize("asdf")
+	assert.Equal(t, pkg.ErrNotFound, err)
+
+	_, err = store.LoadRefresh("asdf")
+	assert.Equal(t, pkg.ErrNotFound, err)
+}
+
 func TestClientOperations(t *testing.T) {
 	create := &osin.DefaultClient{"1", "secret", "http://localhost/", ""}
 	createClient(t, store, create)
@@ -53,7 +68,7 @@ func TestAuthorizeOperations(t *testing.T) {
 	createClient(t, store, client)
 
 	for k, authorize := range []*osin.AuthorizeData{
-		&osin.AuthorizeData{
+		{
 			Client:      client,
 			Code:        uuid.New(),
 			ExpiresIn:   int32(60),
@@ -174,7 +189,7 @@ func TestRefreshOperations(t *testing.T) {
 	}
 
 	for k, c := range []*test{
-		&test{
+		{
 			access: &osin.AccessData{
 				Client: client,
 				AuthorizeData: &osin.AuthorizeData{
