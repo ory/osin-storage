@@ -1,34 +1,53 @@
 {
 	"ImportPath": "github.com/ory-am/osin-storage",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "camlistore.org/pkg/netutil",
-			"Rev": "e52149992aac24dd02248ffb1e166a08f27f0554"
+			"Rev": "9e697d90674d381cf02d5d98ceafe33d77accb7e"
 		},
 		{
 			"ImportPath": "github.com/RangelReale/osin",
-			"Rev": "490411d9dd8e310e1ff66e8a7e39de820b5b9368"
+			"Rev": "d47a3d4a0dbb46c656730fdc39aa4faf35a61c17"
+		},
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7-37-g6f383a9",
+			"Rev": "6f383a9b2998dd6f401704269c3e6e192f6175ad"
+		},
+		{
+			"ImportPath": "github.com/go-errors/errors",
+			"Rev": "a41850380601eeb43f4350f7d17c6bbd8944aaf8"
+		},
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.2-121-g69e3ed7",
+			"Rev": "69e3ed7607d7c139386480824801584c947c67cf"
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
-			"Comment": "go1.0-cutoff-58-g0dad96c",
-			"Rev": "0dad96c0b94f8dee039aa40467f767467392a0af"
+			"Comment": "go1.0-cutoff-61-g83c4f41",
+			"Rev": "83c4f410d0aed80a0f44bac6a576a7f2435791f3"
+		},
+		{
+			"ImportPath": "github.com/oleiade/reflections",
+			"Comment": "0.1.2-2-g632977f",
+			"Rev": "632977f98cd34d217c4b57d0840ec188b3d3dcaf"
 		},
 		{
 			"ImportPath": "github.com/ory-am/common/env",
-			"Rev": "5ec6289dbfc020403f9b2d1f19a71f4c4e0f24cd"
+			"Rev": "715ff940a95fbd6f057b19c4348632830ed2c80b"
 		},
 		{
-			"ImportPath": "github.com/ory-am/common/rand/sequence",
-			"Rev": "5ec6289dbfc020403f9b2d1f19a71f4c4e0f24cd"
+			"ImportPath": "github.com/ory-am/common/pkg",
+			"Rev": "715ff940a95fbd6f057b19c4348632830ed2c80b"
 		},
 		{
 			"ImportPath": "github.com/ory-am/dockertest",
-			"Rev": "80ea36c047e6bd7b802a6dce25c29bac64f8d78e"
+			"Rev": "7fadf570222c18c4ea9629ae396b8f292fc80af8"
 		},
 		{
 			"ImportPath": "github.com/pborman/uuid",
@@ -36,11 +55,18 @@
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
-			"Rev": "dab07ac62d4905d3e48d17dc549c684ac3b7c15a"
+			"Comment": "v1.0-71-g0d5a14c",
+			"Rev": "0d5a14c5a477957864f3b747d95255ad4e34bcc0"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/require",
-			"Rev": "dab07ac62d4905d3e48d17dc549c684ac3b7c15a"
+			"Comment": "v1.0-71-g0d5a14c",
+			"Rev": "0d5a14c5a477957864f3b747d95255ad4e34bcc0"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2",
+			"Comment": "r2015.10.05-1-g4d04138",
+			"Rev": "4d04138ffef2791c479c0c8bbffc30b34081b8d9"
 		}
 	]
 }

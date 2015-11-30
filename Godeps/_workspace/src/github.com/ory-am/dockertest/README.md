@@ -1,113 +1,59 @@
-# dockertest
+# Dockertest
 
 [![Build Status](https://travis-ci.org/ory-am/dockertest.svg)](https://travis-ci.org/ory-am/dockertest)
 
-Use docker to run your Go language (integration) tests against persistent services like **MySQL, Postgres or MongoDB** on **Microsoft Windows, Mac OSX and Linux**! Dockertest uses [docker-machine](https://docs.docker.com/machine/) (aka [Docker Toolbox](https://www.docker.com/toolbox)) to spin up images on Windows and Mac OSX as well!
+Use Docker to run your Go language integration tests against persistent data storage services like **MySQL, Postgres or MongoDB** on **Microsoft Windows, Mac OSX and Linux**! Dockertest uses [docker-machine](https://docs.docker.com/machine/) (aka [Docker Toolbox](https://www.docker.com/toolbox)) to spin up images on Windows and Mac OSX as well.
 
-A suite for testing with docker. Based on  [docker.go](https://github.com/camlistore/camlistore/blob/master/pkg/test/dockertest/docker.go) from [camlistore](https://github.com/camlistore/camlistore).
-This fork detects automatically, if [docker-machine](https://docs.docker.com/machine/) is installed. If it is, you are able to use the docker integration on Windows and Mac OSX as well without any additional work. To avoid port collisions when using docker-machine, dockertest chooses a random port to bind the requested image to.
+A suite for testing with Docker. Based on  [docker.go](https://github.com/camlistore/camlistore/blob/master/pkg/test/dockertest/docker.go) from [camlistore](https://github.com/camlistore/camlistore).
+This fork detects automatically, if [Docker Toolbox](https://www.docker.com/toolbox) is installed. If it is, Docker integration on Windows and Mac OSX can be used without any additional work. To avoid port collisions when using docker-machine, Dockertest chooses a random port to bind the requested image.
 
-## Why should I use dockertest?
+## Why should I use Dockertest?
 
-When developing applications, you most certainly encounter services talking to a database. (Unit) Testing these services can be quite a pain because mocking database/DBAL is horrible. Making slight changes to the schema implies rewriting at least some, if not all of the mocks. The same goes for API changes in the DBAL.  
-To avoid this, it is smarter to test these specific services against a real database which is destroyed after testing. Docker is the perfect tool to solve this for you, as you can spin up containers in a few seconds. This library gives you easy to use commands for spinning up Docker containers and using them for your tests.
+When developing applications, it is often necessary to use services that talk to a database system. Unit Testing these services can be cumbersome because mocking database/DBAL is strenuous. Making slight changes to the schema implies rewriting at least some, if not all of the mocks. The same goes for API changes in the DBAL.  
+To avoid this, it is smarter to test these specific services against a real database that is destroyed after testing. Docker is the perfect system for running unit tests as you can spin up containers in a few seconds and kill them when the test completes. The Dockertest library provides easy to use commands for spinning up Docker containers and using them for your tests.
 
-## Usage
+## Using Dockertest
 
-The usage of dockertest is very simple. For now, MongoDB, Postgres and MySQL containers are supported out of the box. Feel free to extend this list by contributing.
+Using Dockertest is straightforward and  simple. At present, Dockertest supports MongoDB, Postgres and MySQL containers out of the box. Feel free to extend this list by contributing to this project.
 
-### MongoDB Container
+**Note:** When using the Docker Toolbox (Windows / OSX), make sure that the VM is started by running `docker-machine start default`.
+
+### Start a container
 
 ```go
+package main
+
 import "github.com/ory-am/dockertest"
 import "gopkg.in/mgo.v2"
 import "time"
 
-func Foobar() {
-  // Start MongoDB Docker container. Wait 1 second for the image to load.
-  containerID, ip, port, err := dockertest.SetupMongoContainer(time.Duration * 10)
-
-  if err != nil {
-    return err
-  }
-
-  // kill the container on deference
-  defer containerID.KillRemove()
-
-  url := fmt.Sprintf("%s:%d", ip, port)
-  sess, err := mgo.Dial(url)
-  if err != nil {
-    return err
-  }
-
-  defer sess.Close()
-  // ...
+func main() {
+	c, err := ConnectToMongoDB(15, time.Millisecond*500, func(url string) bool {
+		db, err := mgo.Dial(url)
+		if err != nil {
+			return false
+		}
+		defer db.Close()
+		return true
+	})
+	require.Nil(t, err)
+	defer c.KillRemove()
 }
 ```
 
-### MySQL Container
+You can start PostgreSQL and MySQL in a similar fashion with
 
-```go
-import "github.com/ory-am/dockertest"
-import "github.com/go-sql-driver/mysql"
-import "database/sql"
-import "time"
 
-func Foobar() {
-    // Wait 10 seconds for the image to load.
-    c, ip, port, err := dockertest.SetupMySQLContainer(time.Second * 10)
-    if err != nil {
-        return
-    }
-    defer c.KillRemove()
+## Write awesome tests
 
-    url := fmt.Sprintf("mysql://%s:%s@%s:%d/", dockertest.MySQLUsername, dockertest.MySQLPassword, ip, port)
-    db, err := sql.Open("mysql", url)
-    if err != nil {
-        return
-    }
-
-    defer db.Close()
-    // ...
-}
-```
-### Postgres Container
-
-```go
-import "github.com/ory-am/dockertest"
-import "github.com/lib/pq"
-import "database/sql"
-import "time"
-
-func Foobar() {
-    // Wait 10 seconds for the image to load.
-    c, ip, port, err := dockertest.SetupPostgresContainer(time.Second * 10)
-    if err != nil {
-        return
-    }
-    defer c.KillRemove()
-
-    url := fmt.Sprintf("postgres://%s:%s@%s:%d/", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
-    db, err := sql.Open("postgres", url)
-    if err != nil {
-        return
-    }
-
-    defer db.Close()
-    // ...
-}
-```
-
-## Usage in tests
-
-It is a good idea to start up the container only once when running tests. You can achieve this for example by doing:
+It is a good idea to start up the container only once when running tests.
 
 ```go
 
 import (
 	"fmt"
 	"testing"
-    "log"
+   "log"
 	"os"
 
 	"database/sql"
@@ -118,33 +64,28 @@ import (
 var db *sql.DB
 
 func TestMain(m *testing.M) {
-	c, ip, port, err := dockertest.SetupPostgreSQLContainer(time.Second * 5)
-	if err != nil {
-		log.Fatalf("Could not set up PostgreSQL container: %v", err)
+	if c, err := dockertest.ConnectToPostgreSQL(15, time.Second, func(url string) bool {
+		var err error
+		db, err = sql.Open("postgres", url)
+		if err != nil {
+			return false
+		}
+		return db.Ping() == nil
+	}); err != nil {
+		log.Fatalf("Could not connect to database: %s", err)
 	}
 	defer c.KillRemove()
-
-	url := fmt.Sprintf("postgres://%s:%s@%s:%d/postgres?sslmode=disable", dockertest.PostgresUsername, dockertest.PostgresPassword, ip, port)
-	db, err = sql.Open("postgres", url)
-	if err != nil {
-		log.Fatalf("Could not set up PostgreSQL container: %v", err)
-	}
-
-	if err = db.Ping(); err != nil {
-		log.Fatalf("Could not ping database: %v", err)
-	}
-
 	os.Exit(m.Run())
 }
 
 func TestFunction(t *testing.T) {
-    // ...
+    // db.Exec(...
 }
 ```
 
 ### Setting up Travis-CI
 
-You can run the docker integration on travis easily:
+You can run the Docker integration on Travis easily:
 
 ```yml
 # Sudo is required for docker
@@ -157,7 +98,7 @@ services:
 # In Travis, we need to bind to 127.0.0.1 in order to get a working connection. This environment variable
 # tells dockertest to do that.
 env:
-  - DOCKER_BIND_LOCALHOST=true
+  - DOCKERTEST_BIND_LOCALHOST=true
 
 ```
 

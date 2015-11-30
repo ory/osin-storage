@@ -1,21 +1,20 @@
-package postgres_test
+package postgres
 
 import (
 	"database/sql"
-	"github.com/RangelReale/osin"
-	_ "github.com/lib/pq"
-	"github.com/ory-am/common/pkg"
-	"github.com/ory-am/dockertest"
-	"github.com/ory-am/osin-storage/storage"
-	. "github.com/ory-am/osin-storage/storage/postgres"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"log"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/RangelReale/osin"
+	_ "github.com/lib/pq"
+	"github.com/ory-am/dockertest"
+	"github.com/ory-am/osin-storage/storage"
+	"github.com/pborman/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var db *sql.DB
@@ -39,32 +38,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestGetNotFound(t *testing.T) {
-	_, err := store.GetClient("asdf")
-	assert.Equal(t, pkg.ErrNotFound, err)
-
-	_, err = store.LoadAccess("asdf")
-	assert.Equal(t, pkg.ErrNotFound, err)
-
-	_, err = store.LoadAuthorize("asdf")
-	assert.Equal(t, pkg.ErrNotFound, err)
-
-	_, err = store.LoadRefresh("asdf")
-	assert.Equal(t, pkg.ErrNotFound, err)
-}
-
 func TestClientOperations(t *testing.T) {
-	create := &osin.DefaultClient{"1", "secret", "http://localhost/", ""}
+	create := &osin.DefaultClient{Id: "1", Secret: "secret", RedirectUri: "http://localhost/", UserData: ""}
 	createClient(t, store, create)
 	getClient(t, store, create)
 
-	update := &osin.DefaultClient{"1", "secret", "http://www.google.com/", ""}
+	update := &osin.DefaultClient{Id: "1", Secret: "secret", RedirectUri: "http://www.google.com/", UserData: ""}
 	updateClient(t, store, update)
 	getClient(t, store, update)
+
+	assert.NotNil(t, store.CreateClient(&osin.DefaultClient{Id: "1", Secret: "secret", RedirectUri: "http://www.google.com/", UserData: struct{}{}}))
 }
 
 func TestAuthorizeOperations(t *testing.T) {
-	client := &osin.DefaultClient{"2", "secret", "http://localhost/", ""}
+	client := &osin.DefaultClient{Id: "2", Secret: "secret", RedirectUri: "http://localhost/", UserData: ""}
 	createClient(t, store, client)
 
 	for k, authorize := range []*osin.AuthorizeData{
@@ -98,7 +85,7 @@ func TestAuthorizeOperations(t *testing.T) {
 }
 
 func TestStoreFailsOnInvalidUserData(t *testing.T) {
-	client := &osin.DefaultClient{"3", "secret", "http://localhost/", ""}
+	client := &osin.DefaultClient{Id: "3", Secret: "secret", RedirectUri: "http://localhost/", UserData: ""}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -126,7 +113,7 @@ func TestStoreFailsOnInvalidUserData(t *testing.T) {
 }
 
 func TestAccessOperations(t *testing.T) {
-	client := &osin.DefaultClient{"3", "secret", "http://localhost/", ""}
+	client := &osin.DefaultClient{Id: "3", Secret: "secret", RedirectUri: "http://localhost/", UserData: ""}
 	authorize := &osin.AuthorizeData{
 		Client:      client,
 		Code:        uuid.New(),
@@ -183,7 +170,7 @@ func TestAccessOperations(t *testing.T) {
 }
 
 func TestRefreshOperations(t *testing.T) {
-	client := &osin.DefaultClient{"4", "secret", "http://localhost/", ""}
+	client := &osin.DefaultClient{Id: "4", Secret: "secret", RedirectUri: "http://localhost/", UserData: ""}
 	type test struct {
 		access *osin.AccessData
 	}
@@ -237,6 +224,19 @@ func TestRefreshOperations(t *testing.T) {
 
 	}
 	removeClient(t, store, client)
+}
+
+func TestAssertToString(t *testing.T) {
+	res, err := assertToString(struct{}{})
+	assert.NotNil(t, err)
+
+	res, err = assertToString("foo")
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", res)
+
+	res, err = assertToString(nil)
+	assert.Nil(t, err)
+	assert.Equal(t, "", res)
 }
 
 func getClient(t *testing.T, store storage.Storage, set osin.Client) {

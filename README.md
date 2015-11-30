@@ -1,16 +1,17 @@
 # osin-storage
 
-[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg)](https://travis-ci.org/ory-am/osin-storage)
+[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg)](https://travis-ci.org/ory-am/osin-storage) [![Coverage Status](https://coveralls.io/repos/ory-am/osin-storage/badge.svg?branch=master&service=github)](https://coveralls.io/github/ory-am/osin-storage?branch=master)
 
 A postgres storage backend for [osin oauth2](https://github.com/RangelReale/osin).
-
 Additional to implementing the `osin.Storage` interface, the `github.com/ory-am/osin-storage/storage.Storage` interface defines new methods:
+
+This repository is now stable. If your build fails, try running with godep. An API Documentation is available [here](https://godoc.org/github.com/ory-am/osin-storage/storage) and [here](https://godoc.org/github.com/ory-am/osin-storage/storage/postgres).
 
 ```
 // CreateClient stores the client in the database and returns an error, if something went wrong
 CreateClient(client osin.Client) error
 
-// UpdateClient update the client (identified by it's id) and replaces the values with the values of client.
+// UpdateClient updates the client (identified by it's id) and replaces the values with the values of client.
 // Returns an error if something went wrong.
 UpdateClient(client osin.Client) error
 
@@ -38,7 +39,7 @@ func main() {
         return nil, err
     }
 
-	store := postgres.New(db)
+    store := postgres.New(db)
     server := osin.NewServer(osin.NewServerConfig(), store)
 
     // See the osin documentation for more information
