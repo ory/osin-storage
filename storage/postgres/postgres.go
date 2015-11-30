@@ -11,41 +11,33 @@ import (
 )
 
 var schemas = []string{`CREATE TABLE IF NOT EXISTS client (
-	id           text NOT NULL,
+	id           text NOT NULL PRIMARY KEY,
 	secret 		 text NOT NULL,
 	redirect_uri text NOT NULL,
-	extra		 text NOT NULL,
-
-    CONSTRAINT client_pk PRIMARY KEY (id)
+	extra		 text NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS authorize (
 	client       text NOT NULL,
-	code         text NOT NULL,
+	code         text NOT NULL PRIMARY KEY,
 	expires_in   int NOT NULL,
 	scope        text NOT NULL,
 	redirect_uri text NOT NULL,
 	state        text NOT NULL,
 	extra 		 text NOT NULL,
-	created_at   timestamp with time zone NOT NULL,
-
-    CONSTRAINT authorize_pk PRIMARY KEY (code)
+	created_at   timestamp with time zone NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS access (
 	client        text NOT NULL,
 	authorize     text NOT NULL,
 	previous      text NOT NULL,
-	access_token  text NOT NULL,
+	access_token  text NOT NULL PRIMARY KEY,
 	refresh_token text NOT NULL,
 	expires_in    int NOT NULL,
 	scope         text NOT NULL,
 	redirect_uri  text NOT NULL,
 	extra 		  text NOT NULL,
-	created_at    timestamp with time zone NOT NULL,
-
-    CONSTRAINT access_pk PRIMARY KEY (access_token)
+	created_at    timestamp with time zone NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS refresh (
-	token         text NOT NULL,
-	access        text NOT NULL,
-
-    CONSTRAINT refresh_pk PRIMARY KEY (token)
+	token         text NOT NULL PRIMARY KEY,
+	access        text NOT NULL
 )`}
 
 type Storage struct {
