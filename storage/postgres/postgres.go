@@ -10,41 +10,33 @@ import (
 )
 
 var schemas = []string{`CREATE TABLE client (
-	id           text NOT NULL,
+	id           text NOT NULL PRIMARY KEY,
 	secret 		 text NOT NULL,
 	extra 		 text NOT NULL,
-	redirect_uri text NOT NULL,
-
-    CONSTRAINT client_pk PRIMARY KEY (id)
+	redirect_uri text NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS authorize (
 	client       text NOT NULL,
-	code         text NOT NULL,
+	code         text NOT NULL PRIMARY KEY,
 	expires_in   int NOT NULL,
 	scope        text NOT NULL,
 	redirect_uri text NOT NULL,
 	state        text NOT NULL,
 	extra 		 text NOT NULL,
-	created_at   timestamp with time zone NOT NULL,
-
-    CONSTRAINT authorize_pk PRIMARY KEY (code)
+	created_at   timestamp with time zone NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS access (
 	client        text NOT NULL,
 	authorize     text NOT NULL,
 	previous      text NOT NULL,
-	access_token  text NOT NULL,
+	access_token  text NOT NULL PRIMARY KEY,
 	refresh_token text NOT NULL,
 	expires_in    int NOT NULL,
 	scope         text NOT NULL,
 	redirect_uri  text NOT NULL,
 	extra 		  text NOT NULL,
-	created_at    timestamp with time zone NOT NULL,
-
-    CONSTRAINT access_pk PRIMARY KEY (access_token)
+	created_at    timestamp with time zone NOT NULL
 )`, `CREATE TABLE IF NOT EXISTS refresh (
-	token         text NOT NULL,
-	access        text NOT NULL,
-
-    CONSTRAINT refresh_pk PRIMARY KEY (token)
+	token         text NOT NULL PRIMARY KEY,
+	access        text NOT NULL
 )`}
 
 // Storage implements interface "github.com/RangelReale/osin".Storage and interface "github.com/ory-am/osin-storage".Storage
@@ -159,7 +151,7 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 	var data osin.AuthorizeData
 	var extra string
 	var cid string
-	if err := s.db.QueryRow("SELECT client, code, expires_in, scope, redirect_uri, state, created_at, extra FROM authorize WHERE code=$1 LIMIT 1", code).Scan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra); err == sql.ErrNoRows {
+	if err := s.db.QueryRow("SELECT client, code, expires_in, scope, redirect_uri, state, created_at, extra FROM authorize WHERE code=$1", code).Scan(&cid, &data.Code, &data.ExpiresIn, &data.Scope, &data.RedirectUri, &data.State, &data.CreatedAt, &extra); err == sql.ErrNoRows {
 		return nil, pkg.ErrNotFound
 	} else if err != nil {
 		return nil, errors.New(err)
@@ -240,7 +232,7 @@ func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
 	var result osin.AccessData
 
 	if err := s.db.QueryRow(
-		"SELECT client, authorize, previous, access_token, refresh_token, expires_in, scope, redirect_uri, created_at, extra FROM access WHERE access_token=$1 LIMIT 1",
+		"SELECT client, authorize, previous, access_token, refresh_token, expires_in, scope, redirect_uri, created_at, extra FROM access WHERE access_token=$1",
 		code,
 	).Scan(
 		&cid,
@@ -296,9 +288,8 @@ func (s *Storage) RemoveAccess(code string) (err error) {
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
 func (s *Storage) LoadRefresh(code string) (*osin.AccessData, error) {
-	row := s.db.QueryRow("SELECT access FROM refresh WHERE token=$1 LIMIT 1", code)
 	var access string
-	if err := row.Scan(&access); err == sql.ErrNoRows {
+	if err := s.db.QueryRow("SELECT access FROM refresh WHERE token=$1", code).Scan(&access); err == sql.ErrNoRows {
 		return nil, pkg.ErrNotFound
 	} else if err != nil {
 		return nil, errors.New(err)
