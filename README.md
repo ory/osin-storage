@@ -1,6 +1,6 @@
 # osin-storage
 
-[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg)](https://travis-ci.org/ory-am/osin-storage) [![Coverage Status](https://coveralls.io/repos/ory-am/osin-storage/badge.svg?branch=master&service=github)](https://coveralls.io/github/ory-am/osin-storage?branch=master)
+[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg?branch=master)](https://travis-ci.org/ory-am/osin-storage) [![Coverage Status](https://coveralls.io/repos/ory-am/osin-storage/badge.svg?branch=master&service=github)](https://coveralls.io/github/ory-am/osin-storage?branch=master)
 
 A postgres storage backend for [osin oauth2](https://github.com/RangelReale/osin).
 Additional to implementing the `osin.Storage` interface, the `github.com/ory-am/osin-storage/storage.Storage` interface defines new methods:
