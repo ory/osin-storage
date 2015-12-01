@@ -10,6 +10,7 @@ import (
 
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
+	"github.com/ory-am/common/pkg"
 	"github.com/ory-am/dockertest"
 	"github.com/ory-am/osin-storage/storage"
 	"github.com/pborman/uuid"
@@ -226,6 +227,30 @@ func TestRefreshOperations(t *testing.T) {
 	removeClient(t, store, client)
 }
 
+func TestErrors(t *testing.T) {
+	assert.Nil(t, store.CreateClient(&osin.DefaultClient{Id: "dupe"}))
+	assert.NotNil(t, store.CreateClient(&osin.DefaultClient{Id: "dupe"}))
+	assert.NotNil(t, store.CreateClient(&osin.DefaultClient{Id: "foo", UserData: struct{}{}}))
+	assert.NotNil(t, store.SaveAccess(&osin.AccessData{AccessToken: "", AccessData: &osin.AccessData{}, AuthorizeData: &osin.AuthorizeData{}}))
+	assert.Nil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: &osin.DefaultClient{}}))
+	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: &osin.DefaultClient{}}))
+	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "b", Client: &osin.DefaultClient{}, UserData: struct{}{}}))
+	_, err := store.LoadAccess("")
+	assert.Equal(t, pkg.ErrNotFound, err)
+	_, err = store.LoadAuthorize("")
+	assert.Equal(t, pkg.ErrNotFound, err)
+	_, err = store.LoadRefresh("")
+	assert.Equal(t, pkg.ErrNotFound, err)
+	_, err = store.GetClient("")
+	assert.Equal(t, pkg.ErrNotFound, err)
+}
+
+type ts struct{}
+
+func (s *ts) String() string {
+	return "foo"
+}
+
 func TestAssertToString(t *testing.T) {
 	res, err := assertToString(struct{}{})
 	assert.NotNil(t, err)
@@ -237,6 +262,10 @@ func TestAssertToString(t *testing.T) {
 	res, err = assertToString(nil)
 	assert.Nil(t, err)
 	assert.Equal(t, "", res)
+
+	res, err = assertToString(new(ts))
+	assert.Nil(t, err)
+	assert.Equal(t, "foo", res)
 }
 
 func getClient(t *testing.T, store storage.Storage, set osin.Client) {
