@@ -8,6 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/ory-am/common/pkg"
 	"log"
+	"time"
 )
 
 var schemas = []string{`CREATE TABLE IF NOT EXISTS client (
@@ -164,6 +165,10 @@ func (s *Storage) LoadAuthorize(code string) (*osin.AuthorizeData, error) {
 		return nil, err
 	}
 
+	if data.ExpireAt().Before(time.Now()) {
+		return nil, errors.Errorf("Token expired at %s.", data.ExpireAt().String())
+	}
+
 	data.Client = c
 	return &data, nil
 }
@@ -251,28 +256,17 @@ func (s *Storage) LoadAccess(code string) (*osin.AccessData, error) {
 	} else if err != nil {
 		return nil, errors.New(err)
 	}
-	result.UserData = extra
 
+	result.UserData = extra
 	client, err := s.GetClient(cid)
 	if err != nil {
 		return nil, err
 	}
+
 	result.Client = client
-
-	authorize, err := s.LoadAuthorize(authorizeCode)
-	if err != nil {
-		return nil, err
-	}
-	result.AuthorizeData = authorize
-
-	if prevAccessToken != "" {
-		prevAccess, err := s.LoadAccess(prevAccessToken)
-		if err != nil {
-			return nil, err
-		}
-		result.AccessData = prevAccess
-	}
-
+	result.AuthorizeData, _ = s.LoadAuthorize(authorizeCode)
+	prevAccess, _ := s.LoadAccess(prevAccessToken)
+	result.AccessData = prevAccess
 	return &result, nil
 }
 
