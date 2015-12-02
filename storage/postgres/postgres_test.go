@@ -25,7 +25,7 @@ var userDataMock = "bar"
 func TestMain(m *testing.M) {
 	var err error
 	var c dockertest.ContainerID
-	c, db, err = dockertest.OpenPostgreSQLContainerConnection(15, time.Millisecond*500)
+	c, db, err = dockertest.OpenPostgreSQLContainerConnection(15, time.Millisecond * 500)
 	if err != nil {
 		log.Fatalf("Could not set up PostgreSQL container: %v", err)
 	}
@@ -44,11 +44,9 @@ func TestClientOperations(t *testing.T) {
 	createClient(t, store, create)
 	getClient(t, store, create)
 
-	update := &osin.DefaultClient{Id: "1", Secret: "secret", RedirectUri: "http://www.google.com/", UserData: ""}
+	update := &osin.DefaultClient{Id: "1", Secret: "secret123", RedirectUri: "http://www.google.com/", UserData: "{}"}
 	updateClient(t, store, update)
 	getClient(t, store, update)
-
-	assert.NotNil(t, store.CreateClient(&osin.DefaultClient{Id: "1", Secret: "secret", RedirectUri: "http://www.google.com/", UserData: struct{}{}}))
 }
 
 func TestAuthorizeOperations(t *testing.T) {
@@ -59,12 +57,11 @@ func TestAuthorizeOperations(t *testing.T) {
 		{
 			Client:      client,
 			Code:        uuid.New(),
-			ExpiresIn:   int32(60),
+			ExpiresIn:   int32(600),
 			Scope:       "scope",
 			RedirectUri: "http://localhost/",
 			State:       "state",
-			// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
-			CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+			CreatedAt: time.Now().Round(time.Second),
 			UserData:  userDataMock,
 		},
 	} {
@@ -74,6 +71,8 @@ func TestAuthorizeOperations(t *testing.T) {
 		// Test fetch
 		result, err := store.LoadAuthorize(authorize.Code)
 		require.Nil(t, err)
+		require.Equal(t, authorize.CreatedAt.Unix(), authorize.CreatedAt.Unix())
+		authorize.CreatedAt = result.CreatedAt
 		require.True(t, reflect.DeepEqual(authorize, result), "Case: %d\n%v\n\n%v", k, authorize, result)
 
 		// Test remove
@@ -122,8 +121,7 @@ func TestAccessOperations(t *testing.T) {
 		Scope:       "scope",
 		RedirectUri: "http://localhost/",
 		State:       "state",
-		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
-		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		CreatedAt: time.Now().Round(time.Second),
 		UserData:  userDataMock,
 	}
 	nestedAccess := &osin.AccessData{
@@ -135,8 +133,7 @@ func TestAccessOperations(t *testing.T) {
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
-		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
-		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		CreatedAt: time.Now().Round(time.Second),
 		UserData:  userDataMock,
 	}
 	access := &osin.AccessData{
@@ -148,8 +145,7 @@ func TestAccessOperations(t *testing.T) {
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
-		// FIXME this should be time.Now(), but an upstream ( https://github.com/lib/pq/issues/329 ) issue prevents this.
-		CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+		CreatedAt: time.Now().Round(time.Second),
 		UserData:  userDataMock,
 	}
 
@@ -160,13 +156,27 @@ func TestAccessOperations(t *testing.T) {
 
 	result, err := store.LoadAccess(access.AccessToken)
 	require.Nil(t, err)
-	require.True(t, reflect.DeepEqual(access, result))
+	require.Equal(t, access.CreatedAt.Unix(), result.CreatedAt.Unix())
+	require.Equal(t, access.AccessData.CreatedAt.Unix(), result.AccessData.CreatedAt.Unix())
+	require.Equal(t, access.AuthorizeData.CreatedAt.Unix(), result.AuthorizeData.CreatedAt.Unix())
+	access.CreatedAt = result.CreatedAt
+	access.AccessData.CreatedAt = result.AccessData.CreatedAt
+	access.AuthorizeData.CreatedAt = result.AuthorizeData.CreatedAt
+	require.Equal(t, access, result)
+
+	require.Nil(t, store.RemoveAuthorize(authorize.Code))
+	_, err = store.LoadAccess(access.AccessToken)
+	require.Nil(t, err)
+
+	require.Nil(t, store.RemoveAccess(nestedAccess.AccessToken))
+	_, err = store.LoadAccess(access.AccessToken)
+	require.Nil(t, err)
 
 	require.Nil(t, store.RemoveAccess(access.AccessToken))
 	_, err = store.LoadAccess(access.AccessToken)
 	require.NotNil(t, err)
-	require.Nil(t, store.RemoveAuthorize(authorize.Code))
 
+	require.Nil(t, store.RemoveAuthorize(authorize.Code))
 	removeClient(t, store, client)
 }
 
@@ -187,7 +197,7 @@ func TestRefreshOperations(t *testing.T) {
 					Scope:       "scope",
 					RedirectUri: "http://localhost/",
 					State:       "state",
-					CreatedAt:   time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+					CreatedAt:    time.Now().Round(time.Second),
 					UserData:    userDataMock,
 				},
 				AccessData:   nil,
@@ -196,7 +206,7 @@ func TestRefreshOperations(t *testing.T) {
 				ExpiresIn:    int32(60),
 				Scope:        "scope",
 				RedirectUri:  "https://localhost/",
-				CreatedAt:    time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
+				CreatedAt:     time.Now().Round(time.Second),
 				UserData:     userDataMock,
 			},
 		},
@@ -207,7 +217,11 @@ func TestRefreshOperations(t *testing.T) {
 
 		result, err := store.LoadRefresh(c.access.RefreshToken)
 		require.Nil(t, err)
-		require.True(t, reflect.DeepEqual(c.access, result), "Case %d", k)
+		require.Equal(t, c.access.CreatedAt.Unix(), result.CreatedAt.Unix())
+		require.Equal(t, c.access.AuthorizeData.CreatedAt.Unix(), result.AuthorizeData.CreatedAt.Unix())
+		c.access.CreatedAt = result.CreatedAt
+		c.access.AuthorizeData.CreatedAt = result.AuthorizeData.CreatedAt
+		require.Equal(t, c.access, result, "Case %d", k)
 
 		require.Nil(t, store.RemoveRefresh(c.access.RefreshToken))
 		_, err = store.LoadRefresh(c.access.RefreshToken)
