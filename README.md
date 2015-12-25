@@ -19,6 +19,14 @@ UpdateClient(client osin.Client) error
 RemoveClient(id string) error
 ```
 
+## Encrypt your tokens
+
+Unfortunately, the osin library offers little capabilities for storing credentials like access or refresh tokens in a
+hashed or encrypted way. An attacker could gain access to your database through various attack vectors, steal these
+tokens and gain, for example, administrative access to your application.
+
+Please be aware, that this library stores all data as-is and does not perform any sort of encryption or hashing.
+
 ## Usage
 
 First, install this library with `go get "github.com/ory-am/osin-storage/storage/postgres"`.
