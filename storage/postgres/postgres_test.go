@@ -25,22 +25,20 @@ var userDataMock = "bar"
 func TestMain(m *testing.M) {
 	c, err := dockertest.ConnectToPostgreSQL(15, time.Second, func(url string) bool {
 		var err error
-		dbTemp, err := sql.Open("postgres", url)
+		db, err = sql.Open("postgres", url)
 		if err != nil {
 			return false
 		}
-		store = New(dbTemp)
-		if err = store.CreateSchemas(); err != nil {
-			log.Fatalf("Could not ping database: %v", err)
-		}
-
-		db = dbTemp
-
 		return db.Ping() == nil
 	})
 
 	if err != nil {
 		log.Fatalf("Could not connect to database: %s", err)
+	}
+
+	store = New(db)
+	if err = store.CreateSchemas(); err != nil {
+		log.Fatalf("Could not ping database: %v", err)
 	}
 
 	retCode := m.Run()
