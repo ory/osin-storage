@@ -11,11 +11,11 @@ import (
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
 	"github.com/ory-am/common/pkg"
-	"github.com/ory-am/dockertest"
 	"github.com/ory-am/osin-storage/storage"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/ory-am/dockertest.v2"
 )
 
 var db *sql.DB
@@ -23,20 +23,36 @@ var store *Storage
 var userDataMock = "bar"
 
 func TestMain(m *testing.M) {
-	var err error
-	var c dockertest.ContainerID
-	c, db, err = dockertest.OpenPostgreSQLContainerConnection(15, time.Millisecond * 500)
+	c, err := dockertest.ConnectToPostgreSQL(15, time.Second, func(url string) bool {
+		var err error
+		dbTemp, err := sql.Open("postgres", url)
+		if err != nil {
+			return false
+		}
+		store = New(dbTemp)
+		if err = store.CreateSchemas(); err != nil {
+			log.Fatalf("Could not ping database: %v", err)
+		}
+
+		db = dbTemp
+
+		return db.Ping() == nil
+	})
+
 	if err != nil {
-		log.Fatalf("Could not set up PostgreSQL container: %v", err)
-	}
-	defer c.KillRemove()
-
-	store = New(db)
-	if err = store.CreateSchemas(); err != nil {
-		log.Fatalf("Could not set up schemas: %v", err)
+		log.Fatalf("Could not connect to database: %s", err)
 	}
 
-	os.Exit(m.Run())
+	retCode := m.Run()
+
+	// force teardown
+	tearDown(c)
+
+	os.Exit(retCode)
+}
+
+func tearDown(c dockertest.ContainerID) {
+	c.KillRemove()
 }
 
 func TestClientOperations(t *testing.T) {
