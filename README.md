@@ -1,11 +1,11 @@
 # osin-storage
 
-[![Build Status](https://travis-ci.org/ory-am/osin-storage.svg?branch=master)](https://travis-ci.org/ory-am/osin-storage) [![Coverage Status](https://coveralls.io/repos/ory-am/osin-storage/badge.svg?branch=master&service=github)](https://coveralls.io/github/ory-am/osin-storage?branch=master)
+[![Build Status](https://travis-ci.org/ory/osin-storage.svg?branch=master)](https://travis-ci.org/ory/osin-storage) [![Coverage Status](https://coveralls.io/repos/ory/osin-storage/badge.svg?branch=master&service=github)](https://coveralls.io/github/ory/osin-storage?branch=master)
 
 A postgres storage backend for [osin oauth2](https://github.com/RangelReale/osin).
-Additional to implementing the `osin.Storage` interface, the `github.com/ory-am/osin-storage/storage.Storage` interface defines new methods:
+Additional to implementing the `osin.Storage` interface, the `github.com/ory/osin-storage/storage.Storage` interface defines new methods:
 
-This repository is now stable. If your build fails, try running with godep. An API Documentation is available [here](https://godoc.org/github.com/ory-am/osin-storage/storage) and [here](https://godoc.org/github.com/ory-am/osin-storage/storage/postgres).
+This repository is now stable. If your build fails, try running with godep. An API Documentation is available [here](https://godoc.org/github.com/ory/osin-storage/storage) and [here](https://godoc.org/github.com/ory/osin-storage/storage/postgres).
 
 ```
 // CreateClient stores the client in the database and returns an error, if something went wrong
@@ -29,14 +29,14 @@ Please be aware, that this library stores all data as-is and does not perform an
 
 ## Usage
 
-First, install this library with `go get "github.com/ory-am/osin-storage/storage/postgres"`.
+First, install this library with `go get "github.com/ory/osin-storage/storage/postgres"`.
 
 ```go
 import (
 	"database/sql"
 	_ "github.com/lib/pq"
 
-	"github.com/ory-am/osin-storage/storage/postgres"
+	"github.com/ory/osin-storage/storage/postgres"
 	"github.com/RangelReale/osin"
 )
 

@@ -11,7 +11,7 @@ import (
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
 	"github.com/ory-am/common/pkg"
-	"github.com/ory-am/osin-storage/storage"
+	"github.com/ory/osin-storage/storage"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
