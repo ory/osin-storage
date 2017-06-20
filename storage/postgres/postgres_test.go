@@ -10,7 +10,6 @@ import (
 
 	"github.com/RangelReale/osin"
 	_ "github.com/lib/pq"
-	"github.com/ory-am/common/pkg"
 	"github.com/ory/osin-storage/storage"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -75,8 +74,8 @@ func TestAuthorizeOperations(t *testing.T) {
 			Scope:       "scope",
 			RedirectUri: "http://localhost/",
 			State:       "state",
-			CreatedAt: time.Now().Round(time.Second),
-			UserData:  userDataMock,
+			CreatedAt:   time.Now().Round(time.Second),
+			UserData:    userDataMock,
 		},
 	} {
 		// Test save
@@ -135,8 +134,8 @@ func TestAccessOperations(t *testing.T) {
 		Scope:       "scope",
 		RedirectUri: "http://localhost/",
 		State:       "state",
-		CreatedAt: time.Now().Round(time.Second),
-		UserData:  userDataMock,
+		CreatedAt:   time.Now().Round(time.Second),
+		UserData:    userDataMock,
 	}
 	nestedAccess := &osin.AccessData{
 		Client:        client,
@@ -147,8 +146,8 @@ func TestAccessOperations(t *testing.T) {
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
-		CreatedAt: time.Now().Round(time.Second),
-		UserData:  userDataMock,
+		CreatedAt:     time.Now().Round(time.Second),
+		UserData:      userDataMock,
 	}
 	access := &osin.AccessData{
 		Client:        client,
@@ -159,8 +158,8 @@ func TestAccessOperations(t *testing.T) {
 		ExpiresIn:     int32(60),
 		Scope:         "scope",
 		RedirectUri:   "https://localhost/",
-		CreatedAt: time.Now().Round(time.Second),
-		UserData:  userDataMock,
+		CreatedAt:     time.Now().Round(time.Second),
+		UserData:      userDataMock,
 	}
 
 	createClient(t, store, client)
@@ -211,7 +210,7 @@ func TestRefreshOperations(t *testing.T) {
 					Scope:       "scope",
 					RedirectUri: "http://localhost/",
 					State:       "state",
-					CreatedAt:    time.Now().Round(time.Second),
+					CreatedAt:   time.Now().Round(time.Second),
 					UserData:    userDataMock,
 				},
 				AccessData:   nil,
@@ -220,7 +219,7 @@ func TestRefreshOperations(t *testing.T) {
 				ExpiresIn:    int32(60),
 				Scope:        "scope",
 				RedirectUri:  "https://localhost/",
-				CreatedAt:     time.Now().Round(time.Second),
+				CreatedAt:    time.Now().Round(time.Second),
 				UserData:     userDataMock,
 			},
 		},
@@ -264,13 +263,13 @@ func TestErrors(t *testing.T) {
 	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "a", Client: &osin.DefaultClient{}}))
 	assert.NotNil(t, store.SaveAuthorize(&osin.AuthorizeData{Code: "b", Client: &osin.DefaultClient{}, UserData: struct{}{}}))
 	_, err := store.LoadAccess("")
-	assert.Equal(t, pkg.ErrNotFound, err)
+	assert.Equal(t, osin.ErrNotFound, err)
 	_, err = store.LoadAuthorize("")
-	assert.Equal(t, pkg.ErrNotFound, err)
+	assert.Equal(t, osin.ErrNotFound, err)
 	_, err = store.LoadRefresh("")
-	assert.Equal(t, pkg.ErrNotFound, err)
+	assert.Equal(t, osin.ErrNotFound, err)
 	_, err = store.GetClient("")
-	assert.Equal(t, pkg.ErrNotFound, err)
+	assert.Equal(t, osin.ErrNotFound, err)
 }
 
 type ts struct{}
